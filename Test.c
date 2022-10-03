@@ -17,13 +17,13 @@
 
 // User constants and global variable declarations
 #define _XTAL_FREQ          20000000UL
-#define Sensor_Freno_Abajo  PORTAbits.RA5 // RV6
-#define Sensor_Freno_Arriba PORTAbits.RA4 // RV5
-#define Sensor_P2           PORTAbits.RA0 // RV1 : Posici?n 2
-#define Sensor_P3_Arriba    PORTAbits.RA1 // RV2 : Posici?n 3 Arriba
-#define Sensor_P3_Abajo     PORTAbits.RA2 // RV4 : Posici?n 3 Abajo
-#define Sensor_Altura       PORTAbits.RA3 // 
-#define Sensor_Altura2      PORTBbits.RB0 // A6
+#define Sensor_Freno_Abajo  PORTAbits.RA5 // Sensore A5
+#define Sensor_Freno_Arriba PORTAbits.RA4 // Sensore A4
+#define Sensor_A0           PORTAbits.RA0 // Sensor A0 : Posici?n 2
+#define Sensor_A1           PORTAbits.RA1 // Sensor A1 : Posici?n 3 Arriba
+#define Sensor_A2           PORTAbits.RA2 // Sensor A2 : Posici?n 3 Abajo
+#define Sensor_A3           PORTAbits.RA3 // Sensor A3
+#define Sensor_A6      PORTBbits.RB0 // A6
 
 //Macros para el control de motores
 //Pines del Puerto D asociados al control del husillo(Moviemiento del plato)
@@ -49,11 +49,11 @@ int Status_Freno_Ab = 0;
 int Status_Freno_Ar = 0;
 
 int Status_Freno = 0; // 0 OFF Abajo. 1 ON Arriba
-int Status_P2 = 0;
-int Status_P3_Ar = 0;
-int Status_P3_Ab = 0;
-int Status_Al = 0;
-int Status_Al2 = 0;
+int Status_A0 = 0;
+int Status_A1 = 0;
+int Status_A2 = 0;
+int Status_A3 = 0;
+int Status_A6 = 0;
 int Error = 0;
 
 int comando_ejecutado = 0; // Variable que guarda el valor entero del comando serial recibido y ejecutado por el PIC
@@ -167,21 +167,21 @@ void read_FAb(){
 void read_FAr(){
     Status_Freno_Ar = Sensor_Freno_Arriba; 
 }
-void read_P2(){
-    Status_P2 = Sensor_P2; 
+void read_A0(){
+    Status_A0 = Sensor_A0; 
 }
-void read_P3_Ar(){
-    Status_P3_Ar = Sensor_P3_Arriba; 
+void read_A1(){
+    Status_A1 = Sensor_A1; 
 }
-void read_P3_Ab(){
-    Status_P3_Ab = Sensor_P3_Abajo; 
+void read_A2(){
+    Status_A2 = Sensor_A2; 
 }
-void read_Al(){
-    Status_Al = Sensor_Altura; 
+void read_A3(){
+    Status_A3 = Sensor_A3; 
 }
 
-void read_Al2(){
-    Status_Al2 = Sensor_Altura2; 
+void read_A6(){
+    Status_A6 = Sensor_A6; 
 }
 
 int get_FAb(Status_Freno_Ab){
@@ -190,21 +190,21 @@ int get_FAb(Status_Freno_Ab){
 int get_FAr(Status_Freno_Ar){
     return Status_Freno_Ar; 
 }
-int get_P2(Status_P2){
-    return Status_P2; 
+int get_A0(Status_A0){
+    return Status_A0; 
 }
-int get_P3_Ar(Status_P3_Ar){
-    return Status_P3_Ar; 
+int get_A1(Status_A1){
+    return Status_A1; 
 }
-int get_P3_Ab(Status_P3_Ab){
-    return Status_P3_Ab; 
+int get_A2(Status_A2){
+    return Status_A2; 
 }
-int get_Al(Status_Al){
-    return Status_Al; 
+int get_A3(Status_A3){
+    return Status_A3; 
 }
 
-int get_A2(Status_Al2){
-    return Status_Al2; 
+int get_A6(Status_A6){
+    return Status_A6; 
 }
 
 int get_Status_Freno (){
@@ -305,58 +305,15 @@ void activa_freno(){
 
 // Funci?n que revisa valores de los sensores y lleva el plato 1 a home 
 void barrido_inicial(void) {
-    int Plato1_Home = 0; // Variable local para indicar que plato 1 est? en home y se puede pasar a lectura de valores de LabView, cuando est? en HIGH.
+    libera_freno();
     do {
-        read_Al();
-        if (get_Al(Status_Al) == 0){ // Si la placa est? arriba o a la mitad
-            read_P2();      // Lee valores de los sensores P2, P3 Arriba y P3 Abajo
-            read_P3_Ar();
-            read_P3_Ab();
-            // Si alg?n sensor de los anteriores est? encendido entonces la placa est? arriba
-            if ((get_P2(Status_P2)==1)||(get_P3_Ar(Status_P3_Ar)==1)||(get_P3_Ab(Status_P3_Ab)==1)) { 
-                libera_freno(); // Gira motor para desactivar freno
-                read_P2();      // Lee valores de los sensores P2, P3 Arriba y P3 Abajo
-                read_P3_Ar();
-                read_P3_Ab();
-                if ((get_P3_Ab(Status_P3_Ab)==1)&&(get_P3_Ar(Status_P3_Ar)==0)&&(get_P2(Status_P2)==0)) {
-                    // Plato 1 est? en home, ir a leer valores de LabView
-                    Plato1_Home = 1;
-                } else if ((get_P3_Ab(Status_P3_Ab)==1)&&(get_P3_Ar(Status_P3_Ar)==1)&&(get_P2(Status_P2)==0)) {
-                    //Plato 2 en HOME
-                    //Girar horario hasta que el plato 1 llegue a home
-                    do{
-                       mover_husillo(HORARIO);
-                    }while(PORTA != 0b00100100);  
-                    Plato1_Home = 1;
-                } else if ((get_P3_Ab(Status_P3_Ab)==0)&&(get_P3_Ar(Status_P3_Ar)==1)&&(get_P2(Status_P2)==1)) {
-                    //Plato3 en HOME
-                    //Girar horario hasta que el plato 1 llegue a home
-                    do{
-                       mover_husillo(HORARIO);  
-                    }while(PORTA != 0b00100100);  
-                    Plato1_Home = 1;
-                } else if ((get_P3_Ab(Status_P3_Ab)==1)&&(get_P3_Ar(Status_P3_Ar)==0)&&(get_P2(Status_P2)==1)) {
-                    //Plato4 en HOME
-                    //Girar horario hasta que el plato 1 llegue a home
-                    do{
-                       mover_husillo(HORARIO);
-                    }while(PORTA != 0b00100100);  
-                    Plato1_Home = 1;
-                } else {
-                    // Error revisar sensores
-                }
-            // Si ninguno de los sensores P2, P3 Arriba y P3 Abajo est? encendido, entonces la placa est? en medio. Subirla.
-            } else {
-                activa_freno(); // Gira motor para activar freno
-                mover_husillo(ANTIHORARIO); // Girar motor del husillo antihorario para subir la placa
-            }
-        } else if(get_Al(Status_Al) == 1){ // Si la placa est? abajo poner freno y subirla
-            activa_freno(); // Gira motor para activar freno
-            mover_husillo(ANTIHORARIO); //Girar motor del husillo antihorario para subir la placa
-        }
-    } while (Plato1_Home == 0); // Mientras plato 1 no haya llegado a home repetir (hasta que plato 1 est? en Home)
+        mover_husillo(HORARIO);
+        read_A2();
+        read_A0();      // Lee valores de los sensores P2, P3 Arriba y P3 Abajo
+        read_A1();
+    
+    } while (((get_A0(Status_A0)!=0)&&(get_A1(Status_A1)!=0)&&(get_A2(Status_A2)!=1))); // Mientras plato 1 no haya llegado a home repetir (hasta que plato 1 est? en Home)
     // Plato 1 est? en HOME, ir a revisar ID recibido de LabView
-    activa_freno();
     return;
 } // COMPLEMENTAR CON AVANCES
 
@@ -399,21 +356,21 @@ void ID_send() {
 // posici?n de HOME cuando el plato est? arriba
 int revisa_posicion(){
     // Funci?n que realiza un barrido de los sensores y regresa un n?m. entero con el # de plato presente en HOME
-    read_P2();      // Lee valores de los sensores P2, P3 Arriba y P3 Abajo
-    read_P3_Ar();
-    read_P3_Ab();
-    if ((get_P3_Ab(Status_P3_Ab)==1)&&(get_P3_Ar(Status_P3_Ar)==0)&&(get_P2(Status_P2)==0)) {
+    read_A0();      // Lee valores de los sensores P2, P3 Arriba y P3 Abajo
+    read_A1();
+    read_A2();
+    if ((get_A2(Status_A2)==1)&&(get_A1(Status_A1)==0)&&(get_A0(Status_A0)==0)) {
         // Plato 1 est? en HOME
         return 1;
-    } else if ((get_P3_Ab(Status_P3_Ab)==1)&&(get_P3_Ar(Status_P3_Ar)==1)&&(get_P2(Status_P2)==0)) {
+    } else if ((get_A2(Status_A2)==1)&&(get_A1(Status_A1)==1)&&(get_A0(Status_A0)==0)) {
         // Plato 2 en HOME
         return 2;
         // Ir a leer valores de LabView
-    } else if ((get_P3_Ab(Status_P3_Ab)==0)&&(get_P3_Ar(Status_P3_Ar)==1)&&(get_P2(Status_P2)==1)) {
+    } else if ((get_A2(Status_A2)==0)&&(get_A1(Status_A1)==1)&&(get_A0(Status_A0)==1)) {
         // Plato 3 en HOME
         return 3;
         // Ir a leer valores de LabView
-    } else if ((get_P3_Ab(Status_P3_Ab)==1)&&(get_P3_Ar(Status_P3_Ar)==0)&&(get_P2(Status_P2)==1)) {
+    } else if ((get_A2(Status_A2)==1)&&(get_A1(Status_A1)==0)&&(get_A0(Status_A0)==1)) {
         // Plato 4 en HOME
         return 4;
         // Ir a leer valores de LabView
@@ -650,7 +607,7 @@ char ejecucion_comandos(char cmd_recibido){
             do{
                mover_husillo(ANTIHORARIO); //Girar motor del husillo antihorario para subir la placa 
             // Girar el motor para subir placa mientras que cualquiera de los sensores de posici?n no detecte algo (0) y el de altura detecte la placa abajo (1)
-            } while( (get_Al(Status_Al) == 1)||(get_P3_Ab(Status_P3_Ab)==1)||(get_P3_Ar(Status_P3_Ar)==1)||(get_P2(Status_P2)==1) ); 
+            } while( (get_A3(Status_A3) == 1)||(get_A2(Status_A2)==1)||(get_A1(Status_A1)==1)||(get_A0(Status_A0)==1) ); 
             
             return 6;
         break;
@@ -664,7 +621,7 @@ char ejecucion_comandos(char cmd_recibido){
             do {
                mover_husillo(HORARIO); //Girar motor del husillo horario para bajar la placa 
             // Girar el motor para bajar placa mientras que cualquiera de los sensores de posici?n detecte algo (1) o el de altura no detecte nada (0)
-            } while( (get_Al(Status_Al) == 0)||(get_P3_Ab(Status_P3_Ab)==1)||(get_P3_Ar(Status_P3_Ar)==1)||(get_P2(Status_P2)==1) ); 
+            } while( (get_A3(Status_A3) == 0)||(get_A2(Status_A2)==1)||(get_A1(Status_A1)==1)||(get_A0(Status_A0)==1) ); 
             return 7;
         break;
         
@@ -899,11 +856,12 @@ void serial_send(char cmd_enviado){
 // Inicio del programa principal
 void main(void) {
     init_config(); // Ajuste de "Configuration Bits" del PIC y de sus puertos digitales I/O
-    //barrido_inicial(); // Se realiza un barrido inicial del sistema para posicionar el plato 1 de la balanza en Home
+    barrido_inicial(); // Se realiza un barrido inicial del sistema para posicionar el plato 1 de la balanza en Home
+    //libera_freno();
+    //do{
+        //mover_husillo(HORARIO);
+        //}while(1);
     //activa_freno();
-    do{
-        mover_husillo(HORARIO);
-        }while(1);
     
     do { // Ejecutar hasta que se verifique la recepci?n del comando de comunicaci?n serial emitido por LabView  
         ID_receive(); // Cuando se reciba el comando se regresar? un 1     
