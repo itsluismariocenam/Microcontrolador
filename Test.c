@@ -133,7 +133,7 @@ void init_config() {
     ADCON2 = 0b00001111;         // PORTB as DIGITAL I/O
     
     TRISA = 0xFF;   // Configure PORTA as inputs
-    TRISB = 0x00000001;      // Configure PORTB as outputs
+    TRISB = 0x00000001;      // Configure PORTB
     TRISC = 0; // Configure PORTC as outputs
     TRISD = 0; // Configure PORTD as outputs
     
@@ -275,9 +275,9 @@ void mover_husillo(char direccion){
     * x = 20.83/RPM --> Full x = 10.42/RPM --> Half
     */ 
     HUSILLO_RELOJ = 1;
-    __delay_ms(5.21);
+    __delay_ms(10.42);
     HUSILLO_RELOJ = 0;
-    __delay_ms(5.21);
+    __delay_ms(10.42);
     //HUSILLO_ENABLE = 0;
 }
 
@@ -303,16 +303,56 @@ void activa_freno(){
         } while(get_Status_Freno(Status_Freno)==0); // Repetir hasta que el freno se active
 }
 
-// Funci?n que revisa valores de los sensores y lleva el plato 1 a home 
-void barrido_inicial(void) {
-    libera_freno();
-    do {
+void posicion_1(){
+  do {
         mover_husillo(HORARIO);
         read_A2();
         read_A0();      // Lee valores de los sensores P2, P3 Arriba y P3 Abajo
         read_A1();
+        read_A3();
     
-    } while (((get_A0(Status_A0)!=0)&&(get_A1(Status_A1)!=0)&&(get_A2(Status_A2)!=1))); // Mientras plato 1 no haya llegado a home repetir (hasta que plato 1 est? en Home)
+    } while ((get_A0(Status_A0)!=0)||(get_A1(Status_A1)!=1)||(get_A2(Status_A2)!=1)||(get_A3(Status_A3)!=1)); // Mientras plato 1 no haya llegado a home repetir (hasta que plato 1 est? en Home)  
+}
+
+void posicion_2(){
+  do {
+        mover_husillo(ANTIHORARIO);
+        read_A2();
+        read_A0();      // Lee valores de los sensores P2, P3 Arriba y P3 Abajo
+        read_A1();
+        read_A3();
+    
+    } while ((get_A0(Status_A0)!=1)||(get_A1(Status_A1)!=0)||(get_A2(Status_A2)!=1)||(get_A3(Status_A3)!=1)); // Mientras plato 1 no haya llegado a home repetir (hasta que plato 1 est? en Home)  
+}
+
+void posicion_3(){
+  do {
+        mover_husillo(HORARIO);
+        read_A2();
+        read_A0();      // Lee valores de los sensores P2, P3 Arriba y P3 Abajo
+        read_A1();
+        read_A3();
+    
+    } while ((get_A0(Status_A0)!=1)||(get_A1(Status_A1)!=1)||(get_A2(Status_A2)!=1)||(get_A3(Status_A3)!=0)); // Mientras plato 1 no haya llegado a home repetir (hasta que plato 1 est? en Home)  
+}
+
+void posicion_4(){
+  do {
+        mover_husillo(ANTIHORARIO);
+        read_A2();
+        read_A0();      // Lee valores de los sensores P2, P3 Arriba y P3 Abajo
+        read_A1();
+        read_A3();
+    
+    } while ((get_A0(Status_A0)!=1)||(get_A1(Status_A1)!=1)||(get_A2(Status_A2)!=0)||(get_A3(Status_A3)!=1)); // Mientras plato 1 no haya llegado a home repetir (hasta que plato 1 est? en Home)  
+}
+// Funci?n que revisa valores de los sensores y lleva el plato 1 a home 
+void barrido_inicial(void) {
+    libera_freno();
+    posicion_1();
+    posicion_3();
+    posicion_2();
+    posicion_4();
     // Plato 1 est? en HOME, ir a revisar ID recibido de LabView
     return;
 } // COMPLEMENTAR CON AVANCES
@@ -856,12 +896,17 @@ void serial_send(char cmd_enviado){
 // Inicio del programa principal
 void main(void) {
     init_config(); // Ajuste de "Configuration Bits" del PIC y de sus puertos digitales I/O
-    barrido_inicial(); // Se realiza un barrido inicial del sistema para posicionar el plato 1 de la balanza en Home
+    //barrido_inicial(); // Se realiza un barrido inicial del sistema para posicionar el plato 1 de la balanza en Home
     //libera_freno();
     //do{
         //mover_husillo(HORARIO);
         //}while(1);
-    //activa_freno();
+    libera_freno();
+    activa_freno();
+    do{
+        mover_husillo(HORARIO);
+        read_A6();
+    } while((get_A6(Status_A6)!=1));
     
     do { // Ejecutar hasta que se verifique la recepci?n del comando de comunicaci?n serial emitido por LabView  
         ID_receive(); // Cuando se reciba el comando se regresar? un 1     
