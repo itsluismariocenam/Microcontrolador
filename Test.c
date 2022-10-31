@@ -23,7 +23,8 @@
 #define Sensor_A1           PORTAbits.RA1 // Sensor A1 : Posici?n 3 Arriba
 #define Sensor_A2           PORTAbits.RA2 // Sensor A2 : Posici?n 3 Abajo
 #define Sensor_A3           PORTAbits.RA3 // Sensor A3
-#define Sensor_A6      PORTBbits.RB0 // A6
+#define Sensor_A6           PORTBbits.RB0 // A6
+#define Sensor_A7           PORTBbits.RB1 // A7
 
 //Macros para el control de motores
 //Pines del Puerto D asociados al control del husillo(Moviemiento del plato)
@@ -54,6 +55,7 @@ int Status_A1 = 0;
 int Status_A2 = 0;
 int Status_A3 = 0;
 int Status_A6 = 0;
+int Status_A7 = 0;
 int Error = 0;
 
 int comando_ejecutado = 0; // Variable que guarda el valor entero del comando serial recibido y ejecutado por el PIC
@@ -130,10 +132,10 @@ void init_config() {
     // Configuraci?n de Puertos
     ADCON0 = 0;
     ADCON1 = 0b00001111;         // PORTA pins set as Digital I/O. 
-    ADCON2 = 0b00001111;         // PORTB as DIGITAL I/O
+    ADCON2 = 0b00001111;         // PORTB pins set as DIGITAL I/O
     
     TRISA = 0xFF;   // Configure PORTA as inputs
-    TRISB = 0x00000001;      // Configure PORTB
+    TRISB = 0x00000011;      // Configure RB0 and RB1 as inputs
     TRISC = 0; // Configure PORTC as outputs
     TRISD = 0; // Configure PORTD as outputs
     
@@ -184,6 +186,10 @@ void read_A6(){
     Status_A6 = Sensor_A6; 
 }
 
+void read_A7(){
+    Status_A7 = Sensor_A7; 
+}
+
 int get_FAb(Status_Freno_Ab){
     return Status_Freno_Ab; 
 }
@@ -205,6 +211,10 @@ int get_A3(Status_A3){
 
 int get_A6(Status_A6){
     return Status_A6; 
+}
+
+int get_A7(Status_A7){
+    return Status_A7; 
 }
 
 int get_Status_Freno (){
@@ -275,9 +285,23 @@ void mover_husillo(char direccion){
     * x = 20.83/RPM --> Full x = 10.42/RPM --> Half
     */ 
     HUSILLO_RELOJ = 1;
-    __delay_ms(10.42);
+    __delay_ms(20.83);
     HUSILLO_RELOJ = 0;
-    __delay_ms(10.42);
+    __delay_ms(20.83);
+    //HUSILLO_ENABLE = 0;
+}
+
+void mover_husillo_vertical(char direccion){
+    HUSILLO_ENABLE = 1;
+    HUSILLO_DIRECCION = direccion;
+    /*Generador de señal de reloj para el husillo
+    * __delay_ms(x)... donde x corresponde al tiempo de un semiciclo
+    * x = 20.83/RPM --> Full x = 10.42/RPM --> Half
+    */ 
+    HUSILLO_RELOJ = 1;
+    __delay_ms(5.21);
+    HUSILLO_RELOJ = 0;
+    __delay_ms(5.21);
     //HUSILLO_ENABLE = 0;
 }
 
@@ -305,13 +329,14 @@ void activa_freno(){
 
 void posicion_1(){
   do {
-        mover_husillo(HORARIO);
+        mover_husillo(ANTIHORARIO);
         read_A2();
         read_A0();      // Lee valores de los sensores P2, P3 Arriba y P3 Abajo
         read_A1();
         read_A3();
     
-    } while ((get_A0(Status_A0)!=0)||(get_A1(Status_A1)!=1)||(get_A2(Status_A2)!=1)||(get_A3(Status_A3)!=1)); // Mientras plato 1 no haya llegado a home repetir (hasta que plato 1 est? en Home)  
+    } while ((get_A0(Status_A0)!=0)||(get_A1(Status_A1)!=1)||(get_A2(Status_A2)!=1)||(get_A3(Status_A3)!=1)); // Mientras plato 1 no haya llegado a home repetir (hasta que plato 1 est? en Home)
+     
 }
 
 void posicion_2(){
@@ -327,7 +352,7 @@ void posicion_2(){
 
 void posicion_3(){
   do {
-        mover_husillo(HORARIO);
+        mover_husillo(ANTIHORARIO);
         read_A2();
         read_A0();      // Lee valores de los sensores P2, P3 Arriba y P3 Abajo
         read_A1();
@@ -348,12 +373,12 @@ void posicion_4(){
 }
 // Funci?n que revisa valores de los sensores y lleva el plato 1 a home 
 void barrido_inicial(void) {
+    int Plato1_Home = 0;
     libera_freno();
     posicion_1();
-    posicion_3();
-    posicion_2();
-    posicion_4();
+    Plato1_Home = 1;
     // Plato 1 est? en HOME, ir a revisar ID recibido de LabView
+    activa_freno();
     return;
 } // COMPLEMENTAR CON AVANCES
 
@@ -399,18 +424,19 @@ int revisa_posicion(){
     read_A0();      // Lee valores de los sensores P2, P3 Arriba y P3 Abajo
     read_A1();
     read_A2();
-    if ((get_A2(Status_A2)==1)&&(get_A1(Status_A1)==0)&&(get_A0(Status_A0)==0)) {
+    read_A3();
+    if ((get_A0(Status_A0)==0)&&(get_A1(Status_A1)==1)&&(get_A2(Status_A2)==1)&&(get_A3(Status_A3)==1)) {
         // Plato 1 est? en HOME
         return 1;
-    } else if ((get_A2(Status_A2)==1)&&(get_A1(Status_A1)==1)&&(get_A0(Status_A0)==0)) {
+    } else if ((get_A0(Status_A0)==1)&&(get_A1(Status_A1)==0)&&(get_A2(Status_A2)==1)&&(get_A3(Status_A3)==1)) {
         // Plato 2 en HOME
         return 2;
         // Ir a leer valores de LabView
-    } else if ((get_A2(Status_A2)==0)&&(get_A1(Status_A1)==1)&&(get_A0(Status_A0)==1)) {
+    } else if ((get_A0(Status_A0)==1)&&(get_A1(Status_A1)==1)&&(get_A2(Status_A2)==1)&&(get_A3(Status_A3)==0)) {
         // Plato 3 en HOME
         return 3;
         // Ir a leer valores de LabView
-    } else if ((get_A2(Status_A2)==1)&&(get_A1(Status_A1)==0)&&(get_A0(Status_A0)==1)) {
+    } else if ((get_A0(Status_A0)==1)&&(get_A1(Status_A1)==1)&&(get_A2(Status_A2)==0)&&(get_A3(Status_A3)==1)) {
         // Plato 4 en HOME
         return 4;
         // Ir a leer valores de LabView
@@ -898,28 +924,43 @@ void main(void) {
     init_config(); // Ajuste de "Configuration Bits" del PIC y de sus puertos digitales I/O
     //barrido_inicial(); // Se realiza un barrido inicial del sistema para posicionar el plato 1 de la balanza en Home
     //libera_freno();
+    
+    //posicion_4();
+    //activa_freno();
     //do{
         //mover_husillo(HORARIO);
         //}while(1);
-    libera_freno();
-    activa_freno();
-    do{
-        mover_husillo(HORARIO);
-        read_A6();
-    } while((get_A6(Status_A6)!=1));
+    //activa_freno();
+    //do{
+        //mover_husillo_vertical(ANTIHORARIO);
+        //read_A6();
+    //} while((get_A6(Status_A6)!=1));
+    
+    //do{
+        //mover_husillo_vertical(HORARIO);
+        //read_A0();
+        //read_A1();
+        //read_A2();
+        //read_A3();
+    //} while((get_A0(Status_A0)!=1)||(get_A1(Status_A1)!=1)||(get_A2(Status_A2)!=0)||(get_A3(Status_A3)!=1) );
+    
+    //libera_freno();
+    
+    //posicion_3();
+    
     
     do { // Ejecutar hasta que se verifique la recepci?n del comando de comunicaci?n serial emitido por LabView  
         ID_receive(); // Cuando se reciba el comando se regresar? un 1     
     } while (ID_receive()==0); // Repetir mientras que ID_receive sea 0
     ID_send(); // Enviar comando de regreso para validar comunicaci?n exitosa
     
-    do {
+    // do {
         
-        char comando_recibido = serial_receive(); 
-        char comando_ejecutado = ejecucion_comandos(comando_recibido); // Recibe un comando serial, ejec?talo y guarda su valor de retorno en la variable "comando_ejecutado"
-        serial_send(comando_ejecutado); // Env?a a LabVIEW o RealTerm el comando serial que representa el ejecutado por el PIC en la l?nea anterior 
+        // char comando_recibido = serial_receive(); 
+        // char comando_ejecutado = ejecucion_comandos(comando_recibido); // Recibe un comando serial, ejec?talo y guarda su valor de retorno en la variable "comando_ejecutado"
+        // serial_send(comando_ejecutado); // Env?a a LabVIEW o RealTerm el comando serial que representa el ejecutado por el PIC en la l?nea anterior 
         
-    } while(1); // Repetir siempre o a menos que se active alguna interrupcion
+    // } while(1); // Repetir siempre o a menos que se active alguna interrupcion
     
-    return;
+    // return;
 }
